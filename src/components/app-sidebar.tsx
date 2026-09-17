@@ -231,7 +231,14 @@ export function AppSidebar({ appName, user, chats, projects }: AppSidebarProps) 
               My usage
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+            <DropdownMenuItem
+              onClick={async () => {
+                // Redirect client-side: server-derived URLs can point at the
+                // internal host (localhost:8080) behind Railway's proxy.
+                await signOut({ redirect: false });
+                window.location.assign("/login");
+              }}
+            >
               <LogOut />
               Sign out
             </DropdownMenuItem>
