@@ -1,0 +1,162 @@
+import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { requireUser, jsonError, ApiError } from "@/lib/session";
+import { languageModelFor, resolveChatModel } from "@/lib/llm";
+import { getQuotaStatus, recordUsage } from "@/lib/usage";
+import { buildSystemPrompt, retrieveProjectContext } from "@/lib/rag";
+import { formatTokens } from "@/lib/utils";
+import type { RetrievedChunk } from "@/lib/vector";
+
+export const maxDuration = 600;
+
+function textOf(message: UIMessage): string {
+  return message.parts
+    .map((p) => (p.type === "text" ? p.text : ""))
+    .join("\n")
+    .trim();
+}
+
+export async function POST(req: Request) {
+  try {
+    const user = await requireUser();
+    const body = (await req.json()) as {
+      chatId?: string;
+      message?: UIMessage;
+      modelId?: string | null;
+    };
+
+    const chatId = body.chatId;
+    const incoming = body.message;
+    if (!chatId || !incoming || incoming.role !== "user" || !Array.isArray(incoming.parts)) {
+      throw new ApiError(400, "Invalid chat request");
+    }
+
+    const chat = await prisma.chat.findFirst({
+      where: { id: chatId, userId: user.id },
+      include: { project: true },
+    });
+    if (!chat) throw new ApiError(404, "Chat not found");
+
+    const quota = await getQuotaStatus(user);
+    if (quota.exceeded) {
+      throw new ApiError(
+        429,
+        `You've reached your monthly token limit (${formatTokens(quota.limit)} tokens). Your quota resets next month — contact an administrator if you need more.`,
+        "TOKEN_LIMIT"
+      );
+    }
+
+    const model = await resolveChatModel(body.modelId, chat.modelId);
+    const userText = textOf(incoming);
+
+    await prisma.message.create({
+      data: {
+        chatId,
+        role: "user",
+        parts: incoming.parts as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    const messageCount = await prisma.message.count({ where: { chatId } });
+    await prisma.chat.update({
+      where: { id: chatId },
+      data: {
+        updatedAt: new Date(),
+        ...(model.id !== chat.modelId ? { modelId: model.id } : {}),
+        ...(messageCount === 1 && userText
+          ? { title: userText.replace(/\s+/g, " ").slice(0, 80) }
+          : {}),
+      },
+    });
+
+    const dbMessages = await prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "asc" },
+    });
+    const uiMessages: UIMessage[] = dbMessages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        parts: m.parts as unknown as UIMessage["parts"],
+      }));
+
+    let contextChunks: RetrievedChunk[] = [];
+    if (chat.projectId && userText) {
+      contextChunks = await retrieveProjectContext(chat.projectId, userText).catch((e) => {
+        console.warn("[chat] retrieval failed:", e);
+        return [];
+      });
+    }
+
+    const system = buildSystemPrompt({
+      appName: process.env.NEXT_PUBLIC_APP_NAME || "PO-GPT",
+      userName: user.name,
+      project: chat.project
+        ? {
+            name: chat.project.name,
+            instructions: chat.project.instructions,
+            memory: chat.project.memory,
+          }
+        : null,
+      contextChunks,
+    });
+
+    let finalUsage: { inputTokens?: number; outputTokens?: number } = {};
+
+    const result = streamText({
+      model: languageModelFor(model),
+      system,
+      messages: convertToModelMessages(uiMessages),
+      onFinish: ({ totalUsage }) => {
+        finalUsage = {
+          inputTokens: totalUsage.inputTokens ?? 0,
+          outputTokens: totalUsage.outputTokens ?? 0,
+        };
+      },
+    });
+
+    return result.toUIMessageStreamResponse({
+      originalMessages: uiMessages,
+      sendReasoning: true,
+      onError: (error) => {
+        console.error("[chat] stream error:", error);
+        return error instanceof Error ? error.message : "The model request failed.";
+      },
+      onFinish: async ({ responseMessage }) => {
+        try {
+          const inputTokens = finalUsage.inputTokens ?? 0;
+          const outputTokens = finalUsage.outputTokens ?? 0;
+          await prisma.message.create({
+            data: {
+              chatId,
+              role: "assistant",
+              parts: responseMessage.parts as unknown as Prisma.InputJsonValue,
+              modelKey: model.modelKey,
+              inputTokens,
+              outputTokens,
+            },
+          });
+          if (inputTokens + outputTokens > 0) {
+            await recordUsage({
+              userId: user.id,
+              chatId,
+              modelKey: model.modelKey,
+              providerType: model.provider.type,
+              inputTokens,
+              outputTokens,
+              inputPricePerMTok: model.inputPricePerMTok,
+              outputPricePerMTok: model.outputPricePerMTok,
+            });
+          }
+          await prisma.chat.update({ where: { id: chatId }, data: { updatedAt: new Date() } });
+        } catch (e) {
+          console.error("[chat] failed to persist assistant message:", e);
+        }
+      },
+    });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
