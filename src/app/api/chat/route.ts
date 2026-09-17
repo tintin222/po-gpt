@@ -1,10 +1,11 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser, jsonError, ApiError } from "@/lib/session";
 import { languageModelFor, resolveChatModel } from "@/lib/llm";
 import { getQuotaStatus, recordUsage } from "@/lib/usage";
 import { buildSystemPrompt, retrieveProjectContext } from "@/lib/rag";
+import { buildDocumentTools } from "@/lib/docgen/tools";
 import { formatTokens } from "@/lib/utils";
 import type { RetrievedChunk } from "@/lib/vector";
 
@@ -15,6 +16,23 @@ function textOf(message: UIMessage): string {
     .map((p) => (p.type === "text" ? p.text : ""))
     .join("\n")
     .trim();
+}
+
+/**
+ * When a model runs without tools, tool-call parts from earlier turns must not
+ * be replayed (providers reject tool blocks when no tools are declared).
+ */
+function stripToolParts(messages: UIMessage[]): UIMessage[] {
+  return messages
+    .map((m) => ({
+      ...m,
+      parts: m.parts.filter((p) => !p.type.startsWith("tool-") && p.type !== "dynamic-tool"),
+    }))
+    .filter(
+      (m) =>
+        m.role === "user" ||
+        m.parts.some((p) => p.type === "text" && p.text.trim() !== "")
+    );
 }
 
 export async function POST(req: Request) {
@@ -90,6 +108,8 @@ export async function POST(req: Request) {
       });
     }
 
+    const useTools = model.toolsEnabled;
+
     const system = buildSystemPrompt({
       appName: process.env.NEXT_PUBLIC_APP_NAME || "PO-GPT",
       userName: user.name,
@@ -101,6 +121,7 @@ export async function POST(req: Request) {
           }
         : null,
       contextChunks,
+      documentTools: useTools,
     });
 
     let finalUsage: { inputTokens?: number; outputTokens?: number } = {};
@@ -108,7 +129,13 @@ export async function POST(req: Request) {
     const result = streamText({
       model: languageModelFor(model),
       system,
-      messages: convertToModelMessages(uiMessages),
+      messages: convertToModelMessages(useTools ? uiMessages : stripToolParts(uiMessages)),
+      ...(useTools
+        ? {
+            tools: buildDocumentTools({ userId: user.id, chatId }),
+            stopWhen: stepCountIs(6),
+          }
+        : {}),
       onFinish: ({ totalUsage }) => {
         finalUsage = {
           inputTokens: totalUsage.inputTokens ?? 0,

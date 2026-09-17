@@ -129,6 +129,7 @@ export interface SystemPromptParts {
   userName: string;
   project?: { name: string; instructions: string; memory: string } | null;
   contextChunks?: RetrievedChunk[];
+  documentTools?: boolean;
 }
 
 export function buildSystemPrompt({
@@ -136,10 +137,18 @@ export function buildSystemPrompt({
   userName,
   project,
   contextChunks,
+  documentTools,
 }: SystemPromptParts): string {
   const sections: string[] = [
     `You are the AI assistant of ${appName}, an internal company platform. You are helpful, precise, and professional. The current date is ${new Date().toISOString().slice(0, 10)}. You are talking to ${userName}. Format responses in Markdown when helpful.`,
+    `Artifacts: when the user asks for an interactive web page, dashboard, visualization, diagram, game, or mini-app, respond with ONE complete, self-contained HTML document inside a single \`\`\`html code block (inline CSS and JavaScript; external libraries only from well-known CDNs). Include a <title>. The platform renders it as a live preview next to the chat. For static vector graphics you may use a \`\`\`svg block instead.`,
   ];
+
+  if (documentTools) {
+    sections.push(
+      `File deliverables: you have tools that produce real downloadable files — createDocument (Word .docx from Markdown), createPresentation (PowerPoint .pptx from structured slides), and createSpreadsheet (Excel .xlsx from tabular data). Call the matching tool whenever the user asks for a document, report, deck, presentation, spreadsheet, or "file" deliverable. Put the COMPLETE final content into the tool call. After the tool returns, reply with a one-or-two sentence confirmation of what the file contains — the user already sees a download card, so never paste the file's content again. Do not use these tools for ordinary chat answers.`
+    );
+  }
 
   if (project) {
     sections.push(`The user is working inside the project "${project.name}".`);

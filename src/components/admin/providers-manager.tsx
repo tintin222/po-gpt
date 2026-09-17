@@ -28,6 +28,7 @@ interface ModelRow {
   kind: "CHAT" | "EMBEDDING";
   enabled: boolean;
   isDefault: boolean;
+  toolsEnabled: boolean;
   inputPricePerMTok: number | null;
   outputPricePerMTok: number | null;
 }
@@ -205,6 +206,25 @@ function ProviderCard({ provider, onChanged }: { provider: ProviderRow; onChange
                       <Star className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
+                )}
+                {model.kind === "CHAT" && (
+                  <label
+                    className="flex items-center gap-1.5"
+                    title="Allow this model to generate Word/PowerPoint/Excel files (requires a model with tool-calling support)"
+                  >
+                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      files
+                    </span>
+                    <Switch
+                      checked={model.toolsEnabled}
+                      aria-label="Enable file generation tools"
+                      onCheckedChange={(checked) =>
+                        run(`tools-${model.id}`, () =>
+                          api(`/api/admin/models/${model.id}`, "PATCH", { toolsEnabled: checked })
+                        )
+                      }
+                    />
+                  </label>
                 )}
                 <Switch
                   checked={model.enabled}

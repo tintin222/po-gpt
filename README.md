@@ -8,6 +8,11 @@ analytics, and a built-in RAG knowledge base — all behind a company login.
 
 **For everyone**
 - 💬 Streaming chat with Markdown rendering and a model dropdown (choose any model your admins enable)
+- 🖼 **Artifacts** — when the assistant produces an interactive HTML page, chart, or SVG, it appears
+  as a card that opens in a live sandboxed preview panel (with code view, copy, and download)
+- 📎 **File deliverables** — ask for a report, deck, or dataset and the assistant generates real
+  downloadable **Word (.docx)**, **PowerPoint (.pptx)**, and **Excel (.xlsx)** files via structured
+  tools (professionally styled: headings, tables, title slides, speaker notes, typed cells)
 - 🗂 **Projects** — group chats with shared **Instructions**, **Memory**, and a **Knowledge** base
   (upload PDF / DOCX / TXT / MD / CSV / code files; chats automatically retrieve relevant excerpts)
 - 🕘 Full chat history per user, rename/delete chats, per-chat model persistence
@@ -50,6 +55,12 @@ analytics, and a built-in RAG knowledge base — all behind a company login.
   If no embedding model is configured (e.g. Anthropic-only) or pgvector is missing, retrieval
   falls back to Postgres full-text search — knowledge files keep working either way. Document
   badges show which mode is active (`semantic` vs `keyword`).
+- **File generation**: the model calls `createDocument` / `createPresentation` /
+  `createSpreadsheet` tools (AI SDK multi-step tool calling); the server renders files
+  **deterministically** with `docx`, `pptxgenjs`, and `exceljs` — no model-written code is ever
+  executed. Files are stored in Postgres (`GeneratedFile`) and served through an authenticated
+  download route, shown as download cards in the chat. Per-model "files" toggle in the admin
+  console — turn it off for local models without tool-calling support.
 - **Quotas**: `UsageRecord` rows are bucketed by `YYYY-MM`. Effective limit = user override ??
   global default; `0` means unlimited. Enforcement happens before each model call.
 - **Startup** (`instrumentation.ts` → `src/lib/bootstrap.ts`): best-effort
@@ -113,6 +124,7 @@ Postgres via Docker: `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 pgve
 - SSO (Okta / Entra ID / Google Workspace) via Auth.js providers
 - Org-shared projects and role-based project permissions
 - Image/file attachments in chat messages
+- PDF export and editing of uploaded Office files
 - Scheduled/recurring project tasks and automatic project memory distillation
 - Response regeneration and message editing
 - Export chats; retention policies; audit log

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@prisma/client", "pdf-parse", "mammoth"],
+  serverExternalPackages: ["@prisma/client", "pdf-parse", "mammoth", "docx", "pptxgenjs", "exceljs"],
   experimental: {
     serverActions: {
       bodySizeLimit: "25mb",

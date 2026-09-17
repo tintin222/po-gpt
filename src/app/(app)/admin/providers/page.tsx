@@ -21,6 +21,7 @@ export default async function AdminProvidersPage() {
           kind: true,
           enabled: true,
           isDefault: true,
+          toolsEnabled: true,
           inputPricePerMTok: true,
           outputPricePerMTok: true,
         },

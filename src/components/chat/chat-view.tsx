@@ -7,9 +7,11 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowUp, Brain, FolderKanban, Square } from "lucide-react";
-import { cn, formatTokens } from "@/lib/utils";
+import { formatTokens } from "@/lib/utils";
 import { Markdown } from "@/components/markdown";
 import { ModelPicker, type ChatModelOption } from "@/components/chat/model-picker";
+import { ArtifactProvider } from "@/components/chat/artifact-panel";
+import { ToolFileCard, type ToolLikePart } from "@/components/chat/file-card";
 
 export interface QuotaInfo {
   used: number;
@@ -239,41 +241,45 @@ export function ChatView({
 
   if (empty) {
     return (
-      <div className="flex h-full flex-col">
-        {project && <ProjectBanner project={project} />}
-        <div className="flex flex-1 flex-col items-center justify-center px-4 pb-24">
-          <div className="w-full max-w-2xl">
-            <h1 className="mb-8 text-center font-serif text-[2rem] font-medium tracking-tight text-foreground/90">
-              {greetingHour()}, {greetingName.split(" ")[0]}
-            </h1>
-            {composer}
+      <ArtifactProvider>
+        <div className="flex h-full flex-col">
+          {project && <ProjectBanner project={project} />}
+          <div className="flex flex-1 flex-col items-center justify-center px-4 pb-24">
+            <div className="w-full max-w-2xl">
+              <h1 className="mb-8 text-center font-serif text-[2rem] font-medium tracking-tight text-foreground/90">
+                {greetingHour()}, {greetingName.split(" ")[0]}
+              </h1>
+              {composer}
+            </div>
           </div>
         </div>
-      </div>
+      </ArtifactProvider>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {project && <ProjectBanner project={project} />}
-      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-3xl px-4 py-8">
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          {status === "submitted" && (
-            <div className="flex items-center gap-1.5 py-3 pl-1">
-              <span className="thinking-dot h-2 w-2 rounded-full bg-primary" />
-              <span className="thinking-dot h-2 w-2 rounded-full bg-primary" />
-              <span className="thinking-dot h-2 w-2 rounded-full bg-primary" />
-            </div>
-          )}
+    <ArtifactProvider>
+      <div className="flex h-full flex-col">
+        {project && <ProjectBanner project={project} />}
+        <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-3xl px-4 py-8">
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            {status === "submitted" && (
+              <div className="flex items-center gap-1.5 py-3 pl-1">
+                <span className="thinking-dot h-2 w-2 rounded-full bg-primary" />
+                <span className="thinking-dot h-2 w-2 rounded-full bg-primary" />
+                <span className="thinking-dot h-2 w-2 rounded-full bg-primary" />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0 px-4 pb-4">
+          <div className="mx-auto w-full max-w-3xl">{composer}</div>
         </div>
       </div>
-      <div className="shrink-0 px-4 pb-4">
-        <div className="mx-auto w-full max-w-3xl">{composer}</div>
-      </div>
-    </div>
+    </ArtifactProvider>
   );
 }
 
@@ -339,6 +345,9 @@ function MessageBubble({ message }: { message: UIMessage }) {
               <Markdown>{part.text}</Markdown>
             </div>
           );
+        }
+        if (part.type.startsWith("tool-")) {
+          return <ToolFileCard key={i} part={part as unknown as ToolLikePart} />;
         }
         return null;
       })}

@@ -12,6 +12,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       displayName?: string;
       enabled?: boolean;
       isDefault?: boolean;
+      toolsEnabled?: boolean;
       inputPricePerMTok?: number | null;
       outputPricePerMTok?: number | null;
     };
@@ -28,6 +29,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       data.displayName = body.displayName.trim().slice(0, 100);
     }
     if (typeof body.enabled === "boolean") data.enabled = body.enabled;
+    if (typeof body.toolsEnabled === "boolean") data.toolsEnabled = body.toolsEnabled;
     if ("inputPricePerMTok" in body) data.inputPricePerMTok = numOrNull(body.inputPricePerMTok);
     if ("outputPricePerMTok" in body) data.outputPricePerMTok = numOrNull(body.outputPricePerMTok);
 

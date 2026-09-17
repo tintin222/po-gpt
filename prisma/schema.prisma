@@ -45,6 +45,7 @@ model User {
   chats    Chat[]
   projects Project[]
   usage    UsageRecord[]
+  files    GeneratedFile[]
 }
 
 model AppSettings {
@@ -80,6 +81,8 @@ model LlmModel {
   kind               ModelKind @default(CHAT)
   enabled            Boolean   @default(true)
   isDefault          Boolean   @default(false)
+  /// Whether this model may use document-generation tools (requires tool calling)
+  toolsEnabled       Boolean   @default(true)
   /// USD per 1M input tokens (for cost estimation)
   inputPricePerMTok  Float?
   /// USD per 1M output tokens (for cost estimation)
@@ -173,6 +176,20 @@ model Message {
   createdAt    DateTime @default(now())
 
   @@index([chatId, createdAt])
+}
+
+model GeneratedFile {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId    String?
+  name      String
+  mimeType  String
+  sizeBytes Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model UsageRecord {
