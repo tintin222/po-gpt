@@ -21,42 +21,46 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
   --color-success: var(--success);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-serif: var(--font-lora), ui-serif, Georgia, serif;
+  --font-sans: var(--font-roboto), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-roboto), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 6px);
 }
 
+/* Petrol Ofisi brand palette (petrolofisi.com.tr):
+   red #ED1D24 · deep navy #000C19 · cool grays · Roboto */
 :root {
   color-scheme: light;
-  --background: #faf9f5;
-  --foreground: #292824;
+  --background: #f9f9fa;
+  --foreground: #1a1d21;
   --card: #ffffff;
-  --card-foreground: #292824;
+  --card-foreground: #1a1d21;
   --popover: #ffffff;
-  --popover-foreground: #292824;
-  --primary: #bd5d3a;
+  --popover-foreground: #1a1d21;
+  --primary: #ed1d24;
   --primary-foreground: #ffffff;
-  --secondary: #f0eee6;
-  --secondary-foreground: #403e36;
-  --muted: #f0eee6;
-  --muted-foreground: #77746a;
-  --accent: #f0eee6;
-  --accent-foreground: #292824;
-  --destructive: #b3261e;
+  --secondary: #ecedf1;
+  --secondary-foreground: #343a40;
+  --muted: #ecedf1;
+  --muted-foreground: #61646e;
+  --accent: #ecedf1;
+  --accent-foreground: #1a1d21;
+  --destructive: #db1430;
   --destructive-foreground: #ffffff;
-  --border: #e6e3d8;
-  --input: #d9d5c8;
-  --ring: #bd5d3a;
-  --sidebar: #f4f2eb;
-  --sidebar-accent: #e9e6db;
-  --sidebar-border: #e6e3d8;
-  --success: #3d7a4e;
+  --border: #e3e4e9;
+  --input: #cfd2d8;
+  --ring: #ed1d24;
+  --sidebar: #000c19;
+  --sidebar-foreground: #eef0f4;
+  --sidebar-accent: #16222f;
+  --sidebar-border: #1b2735;
+  --success: #187324;
   --radius: 0.625rem;
 }
 
@@ -84,11 +88,11 @@
     height: 8px;
   }
   ::-webkit-scrollbar-thumb {
-    background-color: #d6d2c4;
+    background-color: #cfd2d8;
     border-radius: 8px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #c4bfae;
+    background-color: #b8bcc4;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -159,8 +163,8 @@
   padding: 0.12em 0.35em;
 }
 .chat-markdown pre {
-  background: #262521;
-  color: #f2f0e8;
+  background: #121a24;
+  color: #eef0f4;
   border-radius: 10px;
   padding: 0.9em 1.1em;
   margin: 0.85em 0;

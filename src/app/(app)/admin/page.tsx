@@ -50,7 +50,7 @@ export default async function AdminOverviewPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-5xl px-6 py-10">
-        <h1 className="font-serif text-3xl font-medium tracking-tight">Admin overview</h1>
+        <h1 className="font-display text-3xl font-medium tracking-tight">Admin overview</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Platform health, consumption, and governance at a glance.
         </p>

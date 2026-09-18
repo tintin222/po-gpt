@@ -23,7 +23,7 @@ export default async function ProjectsPage() {
       <div className="mx-auto w-full max-w-5xl px-6 py-10">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <h1 className="font-serif text-3xl font-medium tracking-tight">Projects</h1>
+            <h1 className="font-display text-3xl font-medium tracking-tight">Projects</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Group chats with shared instructions, memory, and a knowledge base.
             </p>
@@ -50,7 +50,7 @@ export default async function ProjectsPage() {
                 <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
                   <FolderKanban className="h-4 w-4" />
                 </div>
-                <h2 className="font-serif text-lg font-medium leading-snug group-hover:text-primary">
+                <h2 className="font-display text-lg font-medium leading-snug group-hover:text-primary">
                   {project.name}
                 </h2>
                 {project.description && (

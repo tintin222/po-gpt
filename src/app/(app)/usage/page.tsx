@@ -39,7 +39,7 @@ export default async function UsagePage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl px-6 py-10">
-        <h1 className="font-serif text-3xl font-medium tracking-tight">My usage</h1>
+        <h1 className="font-display text-3xl font-medium tracking-tight">My usage</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Your consumption for {month}. Quotas reset at the start of each month.
         </p>

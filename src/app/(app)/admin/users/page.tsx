@@ -41,7 +41,7 @@ export default async function AdminUsersPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto w-full max-w-5xl px-6 py-10">
-        <h1 className="font-serif text-3xl font-medium tracking-tight">Users</h1>
+        <h1 className="font-display text-3xl font-medium tracking-tight">Users</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Create accounts, assign roles, and set monthly token budgets. Current default budget:{" "}
           {settings.defaultMonthlyTokenLimit > 0

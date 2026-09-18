@@ -246,7 +246,7 @@ export function ChatView({
           {project && <ProjectBanner project={project} />}
           <div className="flex flex-1 flex-col items-center justify-center px-4 pb-24">
             <div className="w-full max-w-2xl">
-              <h1 className="mb-8 text-center font-serif text-[2rem] font-medium tracking-tight text-foreground/90">
+              <h1 className="mb-8 text-center font-display text-[2rem] font-medium tracking-tight text-foreground/90">
                 {greetingHour()}, {greetingName.split(" ")[0]}
               </h1>
               {composer}

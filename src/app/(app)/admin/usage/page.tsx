@@ -79,7 +79,7 @@ export default async function AdminUsagePage({
       <div className="mx-auto w-full max-w-5xl px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="font-serif text-3xl font-medium tracking-tight">Usage</h1>
+            <h1 className="font-display text-3xl font-medium tracking-tight">Usage</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Token consumption and estimated spend across the organization.
             </p>

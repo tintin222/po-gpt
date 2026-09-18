@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,11 +41,10 @@ export function SetupForm({ appName }: { appName: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <h1 className="font-serif text-3xl font-medium tracking-tight">Welcome to {appName}</h1>
+        <div className="mb-8 flex flex-col items-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/petrol-ofisi-dark.svg" alt="Petrol Ofisi" className="h-9 w-auto" />
+          <h1 className="font-display text-2xl font-bold tracking-tight">Welcome to {appName}</h1>
         </div>
         <Card>
           <CardHeader>

@@ -40,7 +40,7 @@ function inlineRuns(text: string, base: InlineStyle = {}): TextRun[] {
         italics: style.italics,
         font: style.code ? "Consolas" : undefined,
         shading: style.code
-          ? { type: ShadingType.CLEAR, fill: "F0EEE6" }
+          ? { type: ShadingType.CLEAR, fill: "ECEDF1" }
           : undefined,
       })
     );
@@ -107,7 +107,7 @@ export function markdownToDocxChildren(markdown: string): Array<Paragraph | Tabl
         children.push(
           new Paragraph({
             children: [new TextRun({ text: codeLine || " ", font: "Consolas", size: 18 })],
-            shading: { type: ShadingType.CLEAR, fill: "F5F4EF" },
+            shading: { type: ShadingType.CLEAR, fill: "F4F4F5" },
             spacing: { before: 0, after: 0 },
           })
         );
@@ -139,7 +139,7 @@ export function markdownToDocxChildren(markdown: string): Array<Paragraph | Tabl
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
       children.push(
         new Paragraph({
-          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "D9D5C8" } },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "D6D8DD" } },
           spacing: { before: 120, after: 240 },
         })
       );
@@ -161,7 +161,7 @@ export function markdownToDocxChildren(markdown: string): Array<Paragraph | Tabl
           children: [
             new Paragraph({ children: inlineRuns(text, header ? { bold: true } : {}) }),
           ],
-          shading: header ? { type: ShadingType.CLEAR, fill: "F0EEE6" } : undefined,
+          shading: header ? { type: ShadingType.CLEAR, fill: "ECEDF1" } : undefined,
         });
       children.push(
         new Table({
@@ -187,7 +187,7 @@ export function markdownToDocxChildren(markdown: string): Array<Paragraph | Tabl
         new Paragraph({
           children: inlineRuns(trimmed.slice(2), { italics: true }),
           indent: { left: 360 },
-          border: { left: { style: BorderStyle.SINGLE, size: 12, color: "D9D5C8" } },
+          border: { left: { style: BorderStyle.SINGLE, size: 12, color: "D6D8DD" } },
           spacing: { after: 120 },
         })
       );
@@ -247,11 +247,11 @@ export async function markdownToDocx(title: string, markdown: string): Promise<B
     title,
     styles: {
       default: {
-        document: { run: { font: "Calibri", size: 22 } },
-        heading1: { run: { size: 40, bold: true, color: "292824" } },
-        heading2: { run: { size: 32, bold: true, color: "292824" } },
-        heading3: { run: { size: 26, bold: true, color: "3D3B33" } },
-        heading4: { run: { size: 24, bold: true, color: "3D3B33" } },
+        document: { run: { font: "Roboto", size: 22 } },
+        heading1: { run: { size: 40, bold: true, color: "000C19" } },
+        heading2: { run: { size: 32, bold: true, color: "000C19" } },
+        heading3: { run: { size: 26, bold: true, color: "343A40" } },
+        heading4: { run: { size: 24, bold: true, color: "343A40" } },
       },
     },
     sections: [
@@ -260,7 +260,7 @@ export async function markdownToDocx(title: string, markdown: string): Promise<B
         children: [
           new Paragraph({
             heading: HeadingLevel.TITLE,
-            children: [new TextRun({ text: title, bold: true })],
+            children: [new TextRun({ text: title, bold: true, color: "ED1D24" })],
             spacing: { after: 300 },
           }),
           ...markdownToDocxChildren(markdown),

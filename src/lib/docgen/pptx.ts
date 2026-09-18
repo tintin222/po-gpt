@@ -6,11 +6,13 @@ export interface SlideSpec {
   notes?: string;
 }
 
+// Petrol Ofisi brand palette
 const COLORS = {
-  background: "FAF9F5",
-  foreground: "292824",
-  muted: "77746A",
-  accent: "BD5D3A",
+  background: "000C19", // deep navy for the title slide
+  foreground: "1A1D21",
+  muted: "61646E",
+  mutedOnDark: "A1A6B7",
+  accent: "ED1D24",
   white: "FFFFFF",
 };
 
@@ -26,7 +28,7 @@ export async function buildPptx(params: {
   pptx.author = params.author ?? (process.env.NEXT_PUBLIC_APP_NAME || "PO-GPT");
   pptx.title = params.title;
 
-  // ── Title slide ──
+  // ── Title slide (navy with red accent, Petrol Ofisi style) ──
   const titleSlide = pptx.addSlide();
   titleSlide.background = { color: COLORS.background };
   titleSlide.addShape("rect", {
@@ -43,8 +45,8 @@ export async function buildPptx(params: {
     h: 1.4,
     fontSize: 40,
     bold: true,
-    color: COLORS.foreground,
-    fontFace: "Georgia",
+    color: COLORS.white,
+    fontFace: "Roboto",
   });
   if (params.subtitle) {
     titleSlide.addText(params.subtitle, {
@@ -53,7 +55,8 @@ export async function buildPptx(params: {
       w: 8.6,
       h: 0.7,
       fontSize: 18,
-      color: COLORS.muted,
+      color: COLORS.mutedOnDark,
+      fontFace: "Roboto",
     });
   }
   titleSlide.addText(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), {
@@ -62,7 +65,8 @@ export async function buildPptx(params: {
     w: 5,
     h: 0.4,
     fontSize: 12,
-    color: COLORS.muted,
+    color: COLORS.mutedOnDark,
+    fontFace: "Roboto",
   });
 
   // ── Content slides ──
@@ -85,7 +89,7 @@ export async function buildPptx(params: {
       fontSize: 26,
       bold: true,
       color: COLORS.foreground,
-      fontFace: "Georgia",
+      fontFace: "Roboto",
     });
 
     const bullets = (spec.bullets ?? []).filter((b) => b.trim() !== "");
