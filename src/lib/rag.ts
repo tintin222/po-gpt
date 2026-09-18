@@ -77,6 +77,7 @@ export async function processDocument(documentId: string, buffer: Buffer): Promi
       data: { status: "READY", embedded, error: null },
     });
   } catch (e) {
+    console.error(`[rag] document processing failed for ${documentId}:`, e);
     const message = e instanceof Error ? e.message : "Processing failed";
     await prisma.document
       .update({ where: { id: documentId }, data: { status: "ERROR", error: message } })

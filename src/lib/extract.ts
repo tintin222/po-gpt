@@ -1,6 +1,9 @@
-import { createRequire } from "module";
-
-const requireCjs = createRequire(process.cwd() + "/package.json");
+// Import the implementation file directly — the package's index entry runs
+// debug code when it can't detect a parent module. Both packages are listed
+// in serverExternalPackages, so these become plain require() calls at runtime
+// (never bundled/minified by webpack).
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
+import mammoth from "mammoth";
 
 const TEXT_MIME_PREFIXES = ["text/"];
 const TEXT_MIME_TYPES = new Set([
@@ -41,11 +44,6 @@ export async function extractText(
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
 
   if (mimeType === "application/pdf" || ext === "pdf") {
-    // Import the implementation directly — the package's index entry runs
-    // debug code when it can't detect a parent module.
-    const pdfParse = requireCjs("pdf-parse/lib/pdf-parse.js") as (
-      b: Buffer
-    ) => Promise<{ text: string }>;
     const result = await pdfParse(buffer);
     return result.text ?? "";
   }
@@ -54,9 +52,6 @@ export async function extractText(
     mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     ext === "docx"
   ) {
-    const mammoth = requireCjs("mammoth") as {
-      extractRawText: (input: { buffer: Buffer }) => Promise<{ value: string }>;
-    };
     const result = await mammoth.extractRawText({ buffer });
     return result.value ?? "";
   }
