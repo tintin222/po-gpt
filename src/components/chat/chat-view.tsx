@@ -12,6 +12,7 @@ import {
   Brain,
   FileText,
   FolderKanban,
+  Image as ImageIcon,
   Paperclip,
   Square,
   X,
@@ -24,11 +25,67 @@ import { ToolFileCard, type ToolLikePart } from "@/components/chat/file-card";
 import { Spinner } from "@/components/ui/spinner";
 
 const ATTACH_ACCEPT =
-  ".pdf,.docx,.xlsx,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.html,.htm,.js,.ts,.py,.java,.go,.rb,.rs,.sql,.sh,.log";
+  ".pdf,.docx,.xlsx,.pptx,.jpg,.jpeg,.png,.webp,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.html,.htm,.js,.ts,.py,.java,.go,.rb,.rs,.sql,.sh,.log";
+
+const MAX_IMAGES_PER_MESSAGE = 3;
+const MAX_IMAGE_EDGE = 1600;
+const MAX_IMAGE_DATAURL_CHARS = 1_800_000;
 
 interface AttachmentMeta {
   name: string;
   sizeBytes: number;
+}
+
+interface ImagePart {
+  type: "file";
+  mediaType: string;
+  url: string;
+  filename: string;
+}
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+}
+
+function readAsDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Downscale/re-encode an image so it fits comfortably in context and storage. */
+async function prepareImage(file: File): Promise<ImagePart> {
+  if (file.size < 600_000) {
+    const url = await readAsDataURL(file);
+    if (url.startsWith("data:image/") && url.length <= MAX_IMAGE_DATAURL_CHARS) {
+      return { type: "file", mediaType: file.type || "image/png", url, filename: file.name };
+    }
+  }
+
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not process image");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  let url = canvas.toDataURL("image/jpeg", 0.82);
+  if (file.type === "image/png") {
+    const png = canvas.toDataURL("image/png");
+    if (png.length <= MAX_IMAGE_DATAURL_CHARS && png.length < url.length * 1.6) url = png;
+  }
+  if (url.length > MAX_IMAGE_DATAURL_CHARS) url = canvas.toDataURL("image/jpeg", 0.6);
+  if (url.length > MAX_IMAGE_DATAURL_CHARS) {
+    throw new Error(`"${file.name}" is too large even after compression — try a smaller image.`);
+  }
+  const mediaType = url.slice(5, url.indexOf(";"));
+  return { type: "file", mediaType, url, filename: file.name };
 }
 
 /** UI-only message part carrying attachment chips (never sent to the model). */
@@ -123,16 +180,23 @@ export function ChatView({
 
   const isStreaming = status === "submitted" || status === "streaming";
 
-  function sendWithAttachments(text: string, attachmentMeta: AttachmentMeta[]) {
-    if (attachmentMeta.length === 0) {
+  function sendWithAttachments(
+    text: string,
+    attachmentMeta: AttachmentMeta[],
+    imageParts: ImagePart[] = []
+  ) {
+    if (attachmentMeta.length === 0 && imageParts.length === 0) {
       void sendMessage({ text });
       return;
     }
     const message = {
       role: "user",
       parts: [
+        ...imageParts,
         { type: "text", text },
-        { type: "data-attachments", data: attachmentMeta },
+        ...(attachmentMeta.length > 0
+          ? [{ type: "data-attachments", data: attachmentMeta }]
+          : []),
       ],
     };
     void sendMessage(message as unknown as Parameters<typeof sendMessage>[0]);
@@ -149,9 +213,17 @@ export function ChatView({
       if (draft && initialMessages.length === 0) {
         sessionStorage.removeItem(key);
         try {
-          const parsed = JSON.parse(draft) as { t?: string; a?: AttachmentMeta[] };
+          const parsed = JSON.parse(draft) as {
+            t?: string;
+            a?: AttachmentMeta[];
+            imgs?: ImagePart[];
+          };
           if (parsed && typeof parsed.t === "string") {
-            sendWithAttachments(parsed.t, Array.isArray(parsed.a) ? parsed.a : []);
+            sendWithAttachments(
+              parsed.t,
+              Array.isArray(parsed.a) ? parsed.a : [],
+              Array.isArray(parsed.imgs) ? parsed.imgs : []
+            );
             return;
           }
         } catch {
@@ -215,11 +287,20 @@ export function ChatView({
       return;
     }
 
+    const imageFiles = pendingFiles.filter(isImageFile);
+    const docFiles = pendingFiles.filter((f) => !isImageFile(f));
+    if (imageFiles.length > MAX_IMAGES_PER_MESSAGE) {
+      toast.error(`At most ${MAX_IMAGES_PER_MESSAGE} images per message.`);
+      return;
+    }
+
     if (!chatId) {
       // Create the chat, upload attachments, stash the draft, then navigate.
       setCreating(true);
       let createdId: string | null = null;
       try {
+        const imageParts = await Promise.all(imageFiles.map(prepareImage));
+
         const res = await fetch("/api/chats", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -229,13 +310,18 @@ export function ChatView({
         createdId = ((await res.json()) as { id: string }).id;
 
         let meta: AttachmentMeta[] = [];
-        if (pendingFiles.length > 0) {
-          meta = await uploadAttachments(createdId, pendingFiles);
+        if (docFiles.length > 0) {
+          meta = await uploadAttachments(createdId, docFiles);
         }
         try {
-          sessionStorage.setItem(`pogpt:draft:${createdId}`, JSON.stringify({ t: text, a: meta }));
+          sessionStorage.setItem(
+            `pogpt:draft:${createdId}`,
+            JSON.stringify({ t: text, a: meta, imgs: imageParts })
+          );
         } catch {
-          // ignore
+          throw new Error(
+            "Attached images are too large to carry into a new chat — send a message first, then attach them."
+          );
         }
         router.push(`/chat/${createdId}`);
         router.refresh();
@@ -250,10 +336,14 @@ export function ChatView({
     }
 
     let meta: AttachmentMeta[] = [];
+    let imageParts: ImagePart[] = [];
     if (pendingFiles.length > 0) {
       setUploading(true);
       try {
-        meta = await uploadAttachments(chatId, pendingFiles);
+        imageParts = await Promise.all(imageFiles.map(prepareImage));
+        if (docFiles.length > 0) {
+          meta = await uploadAttachments(chatId, docFiles);
+        }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Upload failed");
         setUploading(false);
@@ -266,7 +356,7 @@ export function ChatView({
     setInput("");
     requestAnimationFrame(resizeTextarea);
     autoScrollRef.current = true;
-    sendWithAttachments(text, meta);
+    sendWithAttachments(text, meta, imageParts);
   }
 
   const empty = messages.length === 0;
@@ -291,7 +381,11 @@ export function ChatView({
                 key={`${file.name}-${i}`}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/60 px-2 py-1 text-xs"
               >
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                {isImageFile(file) ? (
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                ) : (
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
                 <span className="max-w-[180px] truncate">{file.name}</span>
                 <span className="text-muted-foreground">{formatBytes(file.size)}</span>
                 <button
@@ -338,7 +432,7 @@ export function ChatView({
               disabled={limitHit || uploading || pendingFiles.length >= 5}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 cursor-pointer"
               aria-label="Attach files"
-              title="Attach files (PDF, Word, Excel, text)"
+              title="Attach files (PDF, Word, Excel, PowerPoint, images, text)"
             >
               <Paperclip className="h-4 w-4" />
             </button>
@@ -461,8 +555,27 @@ function MessageBubble({ message }: { message: UIMessage }) {
       .join("")
       .trim();
     const attachments = attachmentsOf(message);
+    const images = message.parts.filter(
+      (p): p is Extract<typeof p, { type: "file" }> =>
+        p.type === "file" &&
+        typeof (p as { mediaType?: string }).mediaType === "string" &&
+        (p as { mediaType: string }).mediaType.startsWith("image/")
+    );
     return (
       <div className="mb-6 flex flex-col items-end gap-1.5 animate-fade-in">
+        {images.length > 0 && (
+          <div className="flex max-w-[85%] flex-wrap justify-end gap-2">
+            {images.map((img, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={(img as { url: string }).url}
+                alt={(img as { filename?: string }).filename ?? "attached image"}
+                className="max-h-64 max-w-full rounded-xl border border-border object-contain shadow-sm"
+              />
+            ))}
+          </div>
+        )}
         {attachments.length > 0 && (
           <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
             {attachments.map((a, i) => (

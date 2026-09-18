@@ -18,6 +18,42 @@ function textOf(message: UIMessage): string {
     .trim();
 }
 
+const MAX_IMAGE_PARTS = 3;
+const MAX_IMAGE_DATA_CHARS = 2_800_000; // ≈2 MB of binary as base64
+const IMAGE_DATA_URL = /^data:image\/(png|jpeg|webp|gif);base64,/;
+
+/**
+ * Validate the incoming user message: keep text, the UI-only attachment-chip
+ * part, and inline image file parts. Remote file URLs are rejected outright —
+ * the server would otherwise fetch them on the user's behalf (SSRF).
+ */
+function sanitizeIncomingParts(parts: UIMessage["parts"]): UIMessage["parts"] {
+  const out: UIMessage["parts"] = [];
+  let images = 0;
+  for (const part of parts) {
+    if (part.type === "text" && typeof part.text === "string") {
+      out.push({ type: "text", text: part.text.slice(0, 200_000) });
+    } else if (part.type === "data-attachments") {
+      out.push(part);
+    } else if (part.type === "file") {
+      const file = part as { url?: unknown; mediaType?: unknown; filename?: unknown };
+      if (
+        images < MAX_IMAGE_PARTS &&
+        typeof file.url === "string" &&
+        IMAGE_DATA_URL.test(file.url) &&
+        file.url.length <= MAX_IMAGE_DATA_CHARS &&
+        typeof file.mediaType === "string" &&
+        file.mediaType.startsWith("image/")
+      ) {
+        images++;
+        out.push(part);
+      }
+    }
+    // anything else from the client is dropped
+  }
+  return out;
+}
+
 /**
  * Prepare stored UI messages for the model: drop UI-only data parts
  * (e.g. attachment chips), and when the model runs without tools also drop
@@ -73,13 +109,16 @@ export async function POST(req: Request) {
     }
 
     const model = await resolveChatModel(body.modelId, chat.modelId);
-    const userText = textOf(incoming);
+    const cleanParts = sanitizeIncomingParts(incoming.parts);
+    if (cleanParts.length === 0) throw new ApiError(400, "Empty message");
+    const cleanMessage: UIMessage = { ...incoming, parts: cleanParts };
+    const userText = textOf(cleanMessage);
 
     await prisma.message.create({
       data: {
         chatId,
         role: "user",
-        parts: incoming.parts as unknown as Prisma.InputJsonValue,
+        parts: cleanParts as unknown as Prisma.InputJsonValue,
       },
     });
 
