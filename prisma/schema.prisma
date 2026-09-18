@@ -157,10 +157,25 @@ model Chat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  messages Message[]
+  messages    Message[]
+  attachments ChatAttachment[]
 
   @@index([userId, updatedAt])
   @@index([projectId, updatedAt])
+}
+
+model ChatAttachment {
+  id        String   @id @default(cuid())
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  name      String
+  mimeType  String
+  sizeBytes Int
+  /// Extracted plain text (capped), injected into the chat's model context
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([chatId])
 }
 
 model Message {

@@ -19,20 +19,27 @@ function textOf(message: UIMessage): string {
 }
 
 /**
- * When a model runs without tools, tool-call parts from earlier turns must not
- * be replayed (providers reject tool blocks when no tools are declared).
+ * Prepare stored UI messages for the model: drop UI-only data parts
+ * (e.g. attachment chips), and when the model runs without tools also drop
+ * tool-call parts (providers reject tool blocks when no tools are declared).
  */
-function stripToolParts(messages: UIMessage[]): UIMessage[] {
+function sanitizeForModel(messages: UIMessage[], keepTools: boolean): UIMessage[] {
   return messages
     .map((m) => ({
       ...m,
-      parts: m.parts.filter((p) => !p.type.startsWith("tool-") && p.type !== "dynamic-tool"),
+      parts: m.parts.filter((p) => {
+        if (p.type.startsWith("data-")) return false;
+        if (!keepTools && (p.type.startsWith("tool-") || p.type === "dynamic-tool")) return false;
+        return true;
+      }),
     }))
-    .filter(
-      (m) =>
-        m.role === "user" ||
-        m.parts.some((p) => p.type === "text" && p.text.trim() !== "")
-    );
+    .filter((m) => {
+      if (m.parts.length === 0) return false;
+      if (m.role === "user") return true;
+      return m.parts.some(
+        (p) => (p.type === "text" && p.text.trim() !== "") || !p.type.startsWith("text")
+      );
+    });
 }
 
 export async function POST(req: Request) {
@@ -108,6 +115,12 @@ export async function POST(req: Request) {
       });
     }
 
+    const attachments = await prisma.chatAttachment.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "asc" },
+      select: { name: true, content: true },
+    });
+
     const useTools = model.toolsEnabled;
 
     const system = buildSystemPrompt({
@@ -122,6 +135,7 @@ export async function POST(req: Request) {
         : null,
       contextChunks,
       documentTools: useTools,
+      attachments,
     });
 
     let finalUsage: { inputTokens?: number; outputTokens?: number } = {};
@@ -129,7 +143,7 @@ export async function POST(req: Request) {
     const result = streamText({
       model: languageModelFor(model),
       system,
-      messages: convertToModelMessages(useTools ? uiMessages : stripToolParts(uiMessages)),
+      messages: convertToModelMessages(sanitizeForModel(uiMessages, useTools)),
       ...(useTools
         ? {
             tools: buildDocumentTools({ userId: user.id, chatId }),

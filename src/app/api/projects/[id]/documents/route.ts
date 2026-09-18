@@ -53,7 +53,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (!isSupportedFile(name, mimeType)) {
         throw new ApiError(
           400,
-          `"${name}" is not a supported file type (PDF, DOCX, TXT, MD, CSV, JSON, and code files are supported)`
+          `"${name}" is not a supported file type (PDF, DOCX, XLSX, TXT, MD, CSV, JSON, and code files are supported)`
         );
       }
 

@@ -131,7 +131,10 @@ export interface SystemPromptParts {
   project?: { name: string; instructions: string; memory: string } | null;
   contextChunks?: RetrievedChunk[];
   documentTools?: boolean;
+  attachments?: Array<{ name: string; content: string }>;
 }
+
+const MAX_ATTACHMENT_CHARS = 48_000;
 
 export function buildSystemPrompt({
   appName,
@@ -139,6 +142,7 @@ export function buildSystemPrompt({
   project,
   contextChunks,
   documentTools,
+  attachments,
 }: SystemPromptParts): string {
   const sections: string[] = [
     `You are the AI assistant of ${appName}, an internal company platform. You are helpful, precise, and professional. The current date is ${new Date().toISOString().slice(0, 10)}. You are talking to ${userName}. Format responses in Markdown when helpful.`,
@@ -159,6 +163,29 @@ export function buildSystemPrompt({
     if (project.memory.trim()) {
       sections.push(`<project_memory>\n${project.memory.trim()}\n</project_memory>`);
     }
+  }
+
+  if (attachments && attachments.length > 0) {
+    let used = 0;
+    const blocks: string[] = [];
+    for (const file of attachments) {
+      const remaining = MAX_ATTACHMENT_CHARS - used;
+      if (remaining < 200) {
+        blocks.push(`<attached_file name="${file.name.replace(/"/g, "'")}" omitted="true" />`);
+        continue;
+      }
+      const snippet =
+        file.content.length > remaining
+          ? `${file.content.slice(0, remaining)}\n… (truncated)`
+          : file.content;
+      blocks.push(
+        `<attached_file name="${file.name.replace(/"/g, "'")}">\n${snippet}\n</attached_file>`
+      );
+      used += snippet.length;
+    }
+    sections.push(
+      `The user attached the following files to this conversation. Use their contents when answering; refer to files by name.\n\n${blocks.join("\n\n")}`
+    );
   }
 
   if (contextChunks && contextChunks.length > 0) {

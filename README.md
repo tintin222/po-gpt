@@ -8,13 +8,15 @@ analytics, and a built-in RAG knowledge base — all behind a company login.
 
 **For everyone**
 - 💬 Streaming chat with Markdown rendering and a model dropdown (choose any model your admins enable)
+- 📄 **Attach files to any chat** (PDF, Word, Excel, text/code): contents are extracted server-side
+  and stay available to the model for the whole conversation
 - 🖼 **Artifacts** — when the assistant produces an interactive HTML page, chart, or SVG, it appears
   as a card that opens in a live sandboxed preview panel (with code view, copy, and download)
 - 📎 **File deliverables** — ask for a report, deck, or dataset and the assistant generates real
   downloadable **Word (.docx)**, **PowerPoint (.pptx)**, and **Excel (.xlsx)** files via structured
   tools (professionally styled: headings, tables, title slides, speaker notes, typed cells)
 - 🗂 **Projects** — group chats with shared **Instructions**, **Memory**, and a **Knowledge** base
-  (upload PDF / DOCX / TXT / MD / CSV / code files; chats automatically retrieve relevant excerpts)
+  (upload PDF / DOCX / XLSX / TXT / MD / CSV / code files; chats automatically retrieve relevant excerpts)
 - 🕘 Full chat history per user, rename/delete chats, per-chat model persistence
 - 📊 Personal usage page: monthly tokens vs. budget, per-model breakdown
 
@@ -49,7 +51,7 @@ analytics, and a built-in RAG knowledge base — all behind a company login.
   runs quota checks, resolves the model (user selection → chat default → org default), injects the
   project system prompt + retrieved knowledge, streams the response, then persists the assistant
   message and a `UsageRecord` (tokens + estimated cost) in one place.
-- **RAG ingestion**: upload → text extraction (`pdf-parse`, `mammoth`) → paragraph-aware chunking
+- **RAG ingestion**: upload → text extraction (`pdf-parse`, `mammoth`, `exceljs` for spreadsheets) → paragraph-aware chunking
   (~1500 chars, 200 overlap) → embeddings (OpenAI `text-embedding-3-small`, Gemini
   `gemini-embedding-001`, or a local model; normalized to 1536 dims) → pgvector.
   If no embedding model is configured (e.g. Anthropic-only) or pgvector is missing, retrieval

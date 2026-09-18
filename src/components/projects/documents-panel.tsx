@@ -95,7 +95,7 @@ export function DocumentsPanel({ projectId, initialDocuments }: DocumentsPanelPr
           type="file"
           multiple
           hidden
-          accept=".pdf,.docx,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.html,.htm,.js,.ts,.py,.java,.go,.rb,.rs,.sql,.sh,.log"
+          accept=".pdf,.docx,.xlsx,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.html,.htm,.js,.ts,.py,.java,.go,.rb,.rs,.sql,.sh,.log"
           onChange={(e) => void handleUpload(e.target.files)}
         />
       </div>
